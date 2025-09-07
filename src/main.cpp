@@ -85,10 +85,10 @@ void startup_task(void *) {
     cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
     TaskHandle_t task_usb_comm;
     TaskHandle_t task_update_wifi;
-    auto err = xTaskCreate(usb_comm_task, "usb_comm", configMINIMAL_STACK_SIZE / 4, NULL, 1, &task_usb_comm);	// usb task also has to be started only after cyw43 init as some wifi functions are available
+    auto err = xTaskCreate(usb_comm_task, "usb_comm", 512, NULL, 1, &task_usb_comm);	// usb task also has to be started only after cyw43 init as some wifi functions are available
     if (err != pdPASS)
         LogError("Failed to start usb communication task with code {}" ,err);
-    err = xTaskCreate(wifi_search_task, "UpdateWifiThread", configMINIMAL_STACK_SIZE / 4, NULL, 1, &task_update_wifi);
+    err = xTaskCreate(wifi_search_task, "UpdateWifiThread", 512, NULL, 1, &task_update_wifi);
     if (err != pdPASS)
         LogError("Failed to start usb communication task with code {}" ,err);
     cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0);
@@ -103,7 +103,7 @@ int main( void )
     std::cout << "Starting FreeRTOS on all cores\n";
 
     TaskHandle_t task_startup;
-    xTaskCreate(startup_task, "StartupThread", configMINIMAL_STACK_SIZE, NULL, 1, &task_startup);
+    xTaskCreate(startup_task, "StartupThread", 512, NULL, 1, &task_startup);
 
     vTaskStartScheduler();
     return 0;
