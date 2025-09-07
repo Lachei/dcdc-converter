@@ -22,6 +22,7 @@
 #include "measurements.h"
 #include "crypto_storage.h"
 #include "ntp_client.h"
+#include "pwm.hpp"
 
 #define TEST_TASK_PRIORITY ( tskIDLE_PRIORITY + 1UL )
 
@@ -81,6 +82,7 @@ void startup_task(void *) {
     Webserver().start();
     LogInfo("Ready, running http at {}", ip4addr_ntoa(netif_ip4_addr(netif_list)));
     LogInfo("Initialization done");
+    pwm::init();
     std::cout << "Initialization done, get all further info via the commands shown in 'help'\n";
     cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
     TaskHandle_t task_usb_comm;

@@ -64,6 +64,7 @@ target_link_libraries(dcdc-converter
         pico_stdlib
         pico_mbedtls
         hardware_flash
+        hardware_pwm
         pico_cyw43_arch_lwip_sys_freertos
         pico_lwip_mdns
         FreeRTOS-Kernel-Heap4 # FreeRTOS kernel and dynamic heap
