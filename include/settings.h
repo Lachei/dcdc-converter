@@ -5,7 +5,10 @@
 #include "static_types.h"
 
 struct settings {
-	float k_s{.5};
+	float k_p{.1};	// constant factor for error
+	float k_i{.1};	// constant factor for integrated error
+	float k_d{.1};	// constant factor for derivative error
+	float max_amp{};
 
 	static settings& Default() {
 		static settings s{};
@@ -14,13 +17,15 @@ struct settings {
 	/** @brief writes the settings struct as json to the static strig s */
 	template<int N>
 	constexpr void dump_to_json(static_string<N> &s) const {
-		s.append_formatted(R"({{"k_s":{}}})", k_s);
+		s.append_formatted(R"({{"k_p":{},"k_i":{},"k_d"}})", k_p, k_i, k_d);
 	}
 };
 
 /** @brief prints formatted for monospace output, eg. usb */
 std::ostream& operator<<(std::ostream &os, const settings &s) {
-	os << "k_s:   " << s.k_s << '\n';
+	os << "k_p:   " << s.k_p << '\n';
+	os << "k_i:   " << s.k_i << '\n';
+	os << "k_d:   " << s.k_d << '\n';
 	return os;
 }
 
@@ -28,8 +33,12 @@ std::ostream& operator<<(std::ostream &os, const settings &s) {
 std::istream& operator>>(std::istream &is, settings &s) {
 	std::string key;
 	is >> key;
-	if (key == "k_s")
-		is >> s.k_s;
+	if (key == "k_p")
+		is >> s.k_p;
+	else if (key == "k_i")
+		is >> s.k_i;
+	else if (key == "k_d")
+		is >> s.k_d;
 	else
 		is.fail();
 	return is;
