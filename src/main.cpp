@@ -22,7 +22,8 @@
 #include "measurements.h"
 #include "crypto_storage.h"
 #include "ntp_client.h"
-#include "pwm.hpp"
+#include "pwm.h"
+#include "converter_control.h"
 
 #define TEST_TASK_PRIORITY ( tskIDLE_PRIORITY + 1UL )
 
