@@ -6,11 +6,14 @@ struct realtime_data {
 		return rd;
 	}
 
-	float r_hl;
+	// have to be set for integration
+	float ratio_hl{3}; // ratio from high_side_v/low_side_v
 	float low_side_v{150};
 	float high_side_v{430};
 	float low_side_a{0};
 	float high_side_a{0};
+
+	// are set by the controller
 	float prev_err{};
 	float error_integral{};
 	float duty_cycle{1. - 150. / 450.};

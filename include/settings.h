@@ -48,7 +48,7 @@ std::istream& operator>>(std::istream &is, settings &s) {
 	else if (key == "high_to_low_ratio")
 		is >> s.high_to_low_ratio;
 	else
-		is.fail();
+		is.setstate(std::ios::failbit);
 	return is;
 }
 

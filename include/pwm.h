@@ -1,6 +1,6 @@
 #pragma once
 
-#include "hardware/pwm.h"
+#include <cstdint>
 
 namespace pwm {
 
@@ -12,64 +12,16 @@ constexpr float pwm_freq = 80e3;
 constexpr float pico_freq = 125e6;
 
 struct slices {
-    static slices& Default() {
-        static slices s{
-            .p1 = pwm_gpio_to_slice_num(p_1_pin),
-            .p2 = pwm_gpio_to_slice_num(p_2_pin),
-            .p3 = pwm_gpio_to_slice_num(p_3_pin),
-        };
-        return s;
-    };
-
-    uint p1{};
-    uint p2{};
-    uint p3{};
+    static slices& Default();
+    uint32_t p1{};
+    uint32_t p2{};
+    uint32_t p3{};
 };
 
-constexpr void pwm_enable() {
-    slices &s = slices::Default();
-    pwm_set_mask_enabled(1 << s.p1 | 1 << s.p2 | 1 << s.p3);
-}
-
-constexpr void pwm_disable() {
-    pwm_set_mask_enabled(0);
-}
-
-constexpr void set_duty_cycle(uint16_t dc) {
-    slices &s = slices::Default();
-    pwm_set_both_levels(s.p1, dc, dc);
-    pwm_set_both_levels(s.p2, dc, dc);
-    pwm_set_both_levels(s.p3, dc, dc);
-}
-
-constexpr void init() {
-    gpio_set_function(p_1_pin, GPIO_FUNC_PWM);
-    gpio_set_function(p_1_pin - 1, GPIO_FUNC_PWM);
-    gpio_set_function(p_2_pin, GPIO_FUNC_PWM);
-    gpio_set_function(p_2_pin - 1, GPIO_FUNC_PWM);
-    gpio_set_function(p_3_pin, GPIO_FUNC_PWM);
-    gpio_set_function(p_3_pin - 1, GPIO_FUNC_PWM);
-
-    slices &s = slices::Default();
-
-    pwm_config c = pwm_get_default_config();
-    pwm_config_set_output_polarity(&c, false, true);
-    constexpr uint16_t ticks = uint16_t(pico_freq / pwm_freq);
-    pwm_config_set_wrap(&c, ticks);
-
-    pwm_init(s.p1, &c, false);
-    pwm_init(s.p2, &c, false);
-    pwm_init(s.p3, &c, false);
-
-    set_duty_cycle(ticks / 2);
-
-    constexpr uint16_t counter_set_delay = 0;
-    pwm_set_counter(s.p1, 0);
-    pwm_set_counter(s.p2, ticks / 3);
-    pwm_set_counter(s.p3, ticks * 2 / 3);
-
-    pwm_enable();
-} 
+void pwm_enable();
+void pwm_disable();
+void set_duty_cycle(uint16_t dc);
+void init();
 
 }
 
