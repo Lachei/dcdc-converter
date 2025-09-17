@@ -14,27 +14,23 @@ constexpr std::atomic<const char*>& get_error() {
 
 // make a single control parameter update
 // delta_t shall be seddons
-constexpr float control_step(float delta_seconds) {
+constexpr float control_step(float delta_ms, 
+			     realtime_data &rd = realtime_data::Default(),
+			     const settings &settings = settings::Default()) {
 	if (get_error().load()) {
 		pwm::pwm_disable();
-		return -1;
+		return 1.f - 1.f / settings.high_to_low_ratio;
 	}
-	if (delta_seconds == 0)
-		return -1;
-
-	realtime_data &rd = realtime_data::Default();
-	settings &settings = settings::Default();
 
 	// updating duty cycle values
 	float goal_amp = 10.f * (rd.high_side_v - rd.ratio_hl * rd.low_side_v);
 	goal_amp = std::clamp(goal_amp, -settings.max_amps, settings.max_amps);
 	float err = goal_amp - rd.low_side_a;
-	rd.error_integral += err * delta_seconds;
-	float der = (err - rd.prev_err) / delta_seconds;
+	float der = (err - rd.prev_err) / std::max(delta_ms, 1e-3f);
 	rd.duty_cycle = settings.k_p * err +
 			settings.k_i * rd.error_integral +
 			settings.k_d * der;
-	rd.duty_cycle = rd.duty_cycle / (1.f + std::abs(rd.duty_cycle)) * .5f + .5f;
+	rd.duty_cycle = std::clamp(rd.duty_cycle, 0.f, 1.f);
 	rd.prev_err = err;
 
 	return rd.duty_cycle;
