@@ -15,17 +15,20 @@ struct sim_state {
 	std::atomic<float> bat_cur_amp{};
 	std::atomic<float> high_cur_amp{};
 	std::atomic<float> high_v{450};
+	std::atomic<float> v_should_low{};
+	std::atomic<bool> enable_battery_sim{false};
 	
 	static sim_state& Default() { static sim_state state{}; return state; }
 	void update(float delta_ms, float duty_cycle) {
 		// the duty cyle sets the high to low side voltage ratio that would be achieved in steady state
 		// dc_ratio_lh = volt_low/volt_high;
 		float dc_ratio_lh = (1.f - duty_cycle);
-		float v_should_low = dc_ratio_lh * high_v;
+		v_should_low = dc_ratio_lh * high_v;
 		float bat_v_diff = bat_max_v - bat_min_v;
 		float bat_cur_v = (bat_cur_kwh / bat_max_kwh) * bat_v_diff + bat_min_v;
 		bat_cur_amp = (v_should_low - bat_cur_v) / bat_inner_ohm;
-		bat_cur_kwh += bat_cur_amp * delta_ms / (1000. * 3600. * 1000.);  // divide by 1k for k, by 3600 for hours conversion
+		if (enable_battery_sim)
+			bat_cur_kwh += bat_cur_amp * delta_ms / (1000. * 3600. * 1000.);  // divide by 1k for k, by 3600 for hours conversion
 	}
 	void sync_to_realtime_data() const {
 		realtime_data &rt = realtime_data::Default();
@@ -81,6 +84,7 @@ int main(int argc, char **argv) {
 	std::cout << "  ki ${i constant}" << std::endl;
 	std::cout << "  kd ${d constant}" << std::endl;
 	std::cout << "  hv ${HIGH_SIDE_VOLTAGE}" << std::endl;
+	std::cout << "  eb ${0|1} # enable battery sim" << std::endl;
 	std::cout << "  q # stop the simulation" << std::endl;
 
 	std::atomic<bool> continue_running{true};
@@ -98,6 +102,10 @@ int main(int argc, char **argv) {
 				std::cin >> settings::Default().k_i;
 			} else if (cmd == "kd") {
 				std::cin >> settings::Default().k_d;
+			} else if (cmd == "eb") {
+				bool t;
+				std::cin >> t; 
+				sim_state::Default().enable_battery_sim = t;
 			} else if (cmd == "q") {
 				std::cout << "Got quit command" << std::endl;
 				continue_running = false;
@@ -108,13 +116,14 @@ int main(int argc, char **argv) {
 	});
 
 	std::thread data_write = std::thread([&]{
-		res << "# time high_side_v bat_cur_kwh bat_cur_amp bat_cur_v duty_cycle" << std::endl;
+		res << "# time high_side_v bat_cur_kwh bat_cur_amp bat_cur_v duty_cycle target_low_v err_amp goal_amp" << std::endl;
 		// write out every second a datapoint
 		const sim_state &sim = sim_state::Default();
+		const realtime_data &rd = realtime_data::Default();
 		int second{};
 		while(continue_running) {
 			float bat_v_diff = sim.bat_max_v - sim.bat_min_v;
-			res << ++second / 100. << ' ' << sim.high_v << ' ' << sim.bat_cur_kwh << ' ' << sim.bat_cur_amp << ' ' << sim.bat_cur_kwh / sim.bat_max_kwh * bat_v_diff + sim.bat_min_v << ' ' << realtime_data::Default().duty_cycle * 1000 << std::endl;
+			res << ++second / 100. << ' ' << sim.high_v << ' ' << sim.bat_cur_kwh << ' ' << sim.bat_cur_amp << ' ' << sim.bat_cur_kwh / sim.bat_max_kwh * bat_v_diff + sim.bat_min_v << ' ' << realtime_data::Default().duty_cycle * 1000 << ' ' << sim.v_should_low << ' ' << rd.err << ' ' << rd.goal_amp << std::endl;
 			std::this_thread::sleep_for(std::chrono::milliseconds(10));
 		}
 	});
@@ -137,6 +146,7 @@ int main(int argc, char **argv) {
 		sim_state::Default().sync_to_realtime_data();
 		auto cur_time = std::chrono::steady_clock::now();
 		double delta_ms = std::chrono::duration_cast<std::chrono::microseconds>(cur_time - prev_time).count() * 1e-3;
+		prev_time = cur_time;
 		float duty_cycle = control_step(delta_ms);
 		sim_state::Default().update(delta_ms, duty_cycle);
 		std::this_thread::sleep_for(std::chrono::microseconds(100));

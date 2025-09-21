@@ -5,8 +5,8 @@
 #include "static_types.h"
 
 struct settings {
-	float k_p{-.0001};	// constant factor for error
-	float k_i{.0};	// constant factor for integrated error
+	float k_p{-.0004};	// constant factor for error
+	float k_i{-.003};	// constant factor for integrated error
 	float k_d{.0};	// constant factor for derivative error
 	float max_amps{40};
 	float high_to_low_ratio{3}; // ration high_side_v / low_side_v

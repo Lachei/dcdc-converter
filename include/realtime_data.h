@@ -12,6 +12,8 @@ struct realtime_data {
 	float high_side_v{430};
 	float low_side_a{0};
 	float high_side_a{0};
+	float goal_amp{};
+	float err{};
 
 	// are set by the controller
 	float prev_err{};
