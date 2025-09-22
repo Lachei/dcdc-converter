@@ -21,11 +21,12 @@ constexpr float control_step(float delta_ms,
 			     const settings &settings = settings::Default()) {
 	if (get_error().load()) {
 		pwm::pwm_disable();
-		return 1.f - 1.f / settings.high_to_low_ratio;
+		return 1.f - settings.low_to_high_ratio;
 	}
 
 	// updating duty cycle values
-	float goal_amp = BAT_RES_INV * (rd.high_side_v - rd.ratio_hl * rd.low_side_v);
+	float goal_v = std::clamp(rd.high_side_v * settings.low_to_high_ratio, settings.bat_min_v, settings.bat_max_v);
+	float goal_amp = BAT_RES_INV * (goal_v - rd.low_side_v);
 	goal_amp = std::clamp(goal_amp, -settings.max_amps, settings.max_amps);
 	float err = goal_amp - rd.low_side_a;
 	rd.error_integral += err * delta_ms;

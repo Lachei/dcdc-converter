@@ -43,7 +43,7 @@ struct sim_state {
 void prime_err_int() {
 	if (settings::Default().k_i == 0)
 		return;
-	float target_dc = ((1.f - 1.f / settings::Default().high_to_low_ratio) - .5) * 2;
+	float target_dc = ((1.f - settings::Default().low_to_high_ratio) - .5) * 2;
 	if (target_dc < 0)
 		realtime_data::Default().error_integral = (target_dc / (1 + target_dc)) / settings::Default().k_i;
 	else
@@ -131,11 +131,11 @@ int main(int argc, char **argv) {
 	std::thread wild_voltage = std::thread([&]{
 		int a{};
 		while(continue_running) {
-			std::this_thread::sleep_for(std::chrono::seconds(1));
+			std::this_thread::sleep_for(std::chrono::seconds(10));
 			if (a)
-				sim_state::Default().high_v = 500;
+				sim_state::Default().high_v = 600;
 			else
-				sim_state::Default().high_v = 400;
+				sim_state::Default().high_v = 300;
 			a ^= 1;
 		}
 	});

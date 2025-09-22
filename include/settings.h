@@ -9,7 +9,9 @@ struct settings {
 	float k_i{-.003};	// constant factor for integrated error
 	float k_d{.0};	// constant factor for derivative error
 	float max_amps{40};
-	float high_to_low_ratio{3}; // ration high_side_v / low_side_v
+	float low_to_high_ratio{1./3.}; // ration low_side_v / high_side_v
+	float bat_max_v{170};
+	float bat_min_v{130};
 
 	static settings& Default() {
 		static settings s{};
@@ -18,8 +20,8 @@ struct settings {
 	/** @brief writes the settings struct as json to the static strig s */
 	template<int N>
 	constexpr void dump_to_json(static_string<N> &s) const {
-		s.append_formatted(R"({{"k_p":{},"k_i":{},"k_d":{},"max_amps":{},"high_to_low_ratio":{}}})", 
-		     k_p, k_i, k_d, max_amps, high_to_low_ratio);
+		s.append_formatted(R"({{"k_p":{},"k_i":{},"k_d":{},"max_amps":{},"low_to_high_ratio":{}}})", 
+		     k_p, k_i, k_d, max_amps, low_to_high_ratio);
 	}
 };
 
@@ -29,7 +31,7 @@ std::ostream& operator<<(std::ostream &os, const settings &s) {
 	os << "k_i:              " << s.k_i << '\n';
 	os << "k_d:              " << s.k_d << '\n';
 	os << "max_amps:         " << s.max_amps << '\n';
-	os << "high_to_low_ratio:" << s.high_to_low_ratio << '\n';
+	os << "low_to_high_ratio:" << s.low_to_high_ratio << '\n';
 	return os;
 }
 
@@ -45,8 +47,8 @@ std::istream& operator>>(std::istream &is, settings &s) {
 		is >> s.k_d;
 	else if (key == "max_amps")
 		is >> s.max_amps;
-	else if (key == "high_to_low_ratio")
-		is >> s.high_to_low_ratio;
+	else if (key == "low_to_high_ratio")
+		is >> s.low_to_high_ratio;
 	else
 		is.setstate(std::ios::failbit);
 	return is;
