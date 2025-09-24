@@ -24,11 +24,43 @@
 #include "ntp_client.h"
 #include "pwm.h"
 #include "converter_control.h"
+#include "measure.h"
 
-#define TEST_TASK_PRIORITY ( tskIDLE_PRIORITY + 1UL )
+// the measure and control task are started with the same prio and same in-between delay to have
+// stable controls
 
-constexpr UBaseType_t STANDARD_TASK_PRIORITY = tskIDLE_PRIORITY + 1ul;
-constexpr UBaseType_t CONTROL_TASK_PRIORITY = tskIDLE_PRIORITY + 10ul;
+TaskHandle_t measure_task_handle;
+TaskHandle_t control_task_handle;
+
+int64_t alarm_callback(alarm_id_t id, void *user_data) {
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    vTaskNotifyGiveFromISR(measure_task_handle, &xHigherPriorityTaskWoken);
+    vTaskNotifyGiveFromISR(control_task_handle, &xHigherPriorityTaskWoken);
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    return 0; // Don't repeat the alarm
+}
+
+void measure_task(void *) {
+    for (;;) {
+        add_alarm_in_us(100, alarm_callback, NULL, true);
+        ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(1)); // at max wait 1ms for the alarm
+        measure_and_update(realtime_data::Default());
+    }
+}
+
+void control_task(void *) {
+    uint64_t prev = time_us_64();
+    float avg = 100.f;
+    uint32_t counter{};
+    for (;;) {
+        ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(1)); // at max wait 1ms for the alarm
+        uint64_t cur = time_us_64();
+        avg = .99f * avg + .01f * (cur - prev);
+        if (++counter % 10000 == 0) // should fire every second
+            LogInfo("Yep, another call, diff: {}", avg);
+        prev = cur;
+    }
+}
 
 void usb_comm_task(void *) {
     LogInfo("Usb communication task");
@@ -37,14 +69,6 @@ void usb_comm_task(void *) {
     for (;;) {
 	handle_usb_command();
     }
-}
-
-void measure_task(void *) {
-}
-
-void control_task(void *) {
-    time_us_64();
-
 }
 
 void wifi_search_task(void *) {
@@ -93,9 +117,15 @@ void startup_task(void *) {
         LogError("Failed to start usb communication task with code {}" ,err);
     err = xTaskCreate(wifi_search_task, "UpdateWifiThread", 512, NULL, 1, &task_update_wifi);
     if (err != pdPASS)
-        LogError("Failed to start usb communication task with code {}" ,err);
+        LogError("Failed to start wifi task with code {}" ,err);
+    err = xTaskCreate(measure_task, "MeasureThread", 512, NULL, configMAX_PRIORITIES - 1, &measure_task_handle);
+    if (err != pdPASS)
+        LogError("Failed to start measure task with code {}" ,err);
+    err = xTaskCreate(control_task, "MeasureThread", 512, NULL, configMAX_PRIORITIES - 1, &control_task_handle);
+    if (err != pdPASS)
+        LogError("Failed to start measure task with code {}" ,err);
     cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0);
-    for (;;) vTaskDelay(1<<20);
+    vTaskDelete(NULL);
 }
 
 int main( void )

@@ -1,9 +1,16 @@
 #include <pwm.h>
 
+#include <algorithm>
+
 #include "hardware/pwm.h"
 #include "hardware/gpio.h"
+#include "hardware/platform_defs.h"
 
 namespace pwm {
+
+constexpr float pwm_freq = 80e3;
+constexpr float pico_freq = SYS_CLK_HZ;
+constexpr uint16_t ticks = uint16_t(pico_freq / pwm_freq);
 
 slices& slices::Default() {
 	static slices s{
@@ -30,6 +37,14 @@ void set_duty_cycle(uint16_t dc) {
     pwm_set_both_levels(s.p3, dc, dc);
 }
 
+void set_duty_cycle(float dc) {
+    const uint16_t dc_int = std::clamp(dc, 0.f, 1.f) * ticks;
+    slices &s = slices::Default();
+    pwm_set_both_levels(s.p1, dc_int, dc_int);
+    pwm_set_both_levels(s.p2, dc_int, dc_int);
+    pwm_set_both_levels(s.p3, dc_int, dc_int);
+}
+
 void init() {
     gpio_set_function(p_1_pin, GPIO_FUNC_PWM);
     gpio_set_function(p_1_pin - 1, GPIO_FUNC_PWM);
@@ -42,14 +57,13 @@ void init() {
 
     pwm_config c = pwm_get_default_config();
     pwm_config_set_output_polarity(&c, false, true);
-    constexpr uint16_t ticks = uint16_t(pico_freq / pwm_freq);
     pwm_config_set_wrap(&c, ticks);
 
     pwm_init(s.p1, &c, false);
     pwm_init(s.p2, &c, false);
     pwm_init(s.p3, &c, false);
 
-    set_duty_cycle(ticks / 2);
+    set_duty_cycle(uint16_t(ticks >> 1));
 
     pwm_set_counter(s.p1, 0);
     pwm_set_counter(s.p2, ticks / 3);
