@@ -43,21 +43,24 @@ int64_t alarm_callback(alarm_id_t id, void *user_data) {
 void measure_task(void *) {
     for (;;) {
         add_alarm_in_us(100, alarm_callback, NULL, true);
-        ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(1)); // at max wait 1ms for the alarm
+        ulTaskNotifyTake(pdTRUE, 10); // at max wait 1ms for the alarm
         measure_and_update(realtime_data::Default());
     }
 }
 
 void control_task(void *) {
     uint64_t prev = time_us_64();
-    float avg = 100.f;
-    uint32_t counter{};
     for (;;) {
-        ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(1)); // at max wait 1ms for the alarm
+        ulTaskNotifyTake(pdTRUE, 10); // at max wait 1ms for the alarm
+        if (!settings::Default().enabled) {
+            pwm::pwm_disable();
+            continue;
+        }
         uint64_t cur = time_us_64();
-        avg = .99f * avg + .01f * (cur - prev);
-        if (++counter % 10000 == 0) // should fire every second
-            LogInfo("Yep, another call, diff: {}", avg);
+        float delta_ms = (cur - prev) * float(1e-3);
+        float duty_cycle = control_step(delta_ms, realtime_data::Default(), settings::Default());
+        pwm::set_duty_cycle(duty_cycle);
+        pwm::pwm_enable();
         prev = cur;
     }
 }

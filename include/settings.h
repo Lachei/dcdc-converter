@@ -5,6 +5,8 @@
 #include "static_types.h"
 
 struct settings {
+	bool enabled{false};
+
 	float k_p{-.0004};	// constant factor for error
 	float k_i{-.003};	// constant factor for integrated error
 	float k_d{.0};	// constant factor for derivative error
